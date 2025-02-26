@@ -1,4 +1,3 @@
-{-# LANGUAGE ApplicativeDo #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module NumMunge.Project where
