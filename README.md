@@ -1,7 +1,16 @@
 <!-- omit in toc -->
 # NumMunge
 
-This starter project contains the scaffolding needed to integrate Clash with the Cabal and Stack build systems. It allows you to use dependencies from [Hackage](https://hackage.haskell.org/) easily.
+My personal FPGA playground, used to experiment with my [ALINX AX7A200B](https://www.en.alinx.com/Product/FPGA-Development-Boards/Artix-7/AX7A200B.html).
+
+- [x] Box Muller & XoShiRo128Plus based gaussian RNG.
+- [x] Basic [host script](https://github.com/sheganinans/num_munge_bsv/blob/main/dma_odin/main.odin) to talk to PCIE/DMA.
+- [x] PCIE/DMA connection to on board RAM using Xilinx IP.
+- [ ] Basic Clash design to integrate with DMA through AXI.
+- [ ] Tcl build script for Vivado.
+- [ ] Update host script for interacting with numerical simulation.
+
+![](./imgs/diagram.png)
 
 <!-- omit in toc -->
 # Table of Contents
