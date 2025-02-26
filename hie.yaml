@@ -1,0 +1,12 @@
+cradle:
+  cabal:
+    - path: "./src"
+      component: "lib:nm-clash"
+    - path: "./tests/doctests.hs"
+      component: "nm-clash:doctests"
+    - path: "./tests"
+      component: "nm-clash:test-library"
+    - path: "./bin/Clashi.hs"
+      component: "nm-clash:exe:clashi"
+    - path: "./bin/Clash.hs"
+      component: "nm-clash:exe:clash"
