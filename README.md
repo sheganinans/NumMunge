@@ -1,5 +1,5 @@
 <!-- omit in toc -->
-# Simple Starter Project
+# NumMunge
 
 This starter project contains the scaffolding needed to integrate Clash with the Cabal and Stack build systems. It allows you to use dependencies from [Hackage](https://hackage.haskell.org/) easily.
 
@@ -19,14 +19,6 @@ This starter project contains the scaffolding needed to integrate Clash with the
   - [src/](#src)
   - [tests/](#tests)
 - [Change the license](#change-the-license)
-
-# Getting this project
-
-Stack users can run `stack new my-clash-project clash-lang/simple`. Cabal users can [download a zip](https://raw.githubusercontent.com/clash-lang/clash-starters/main/simple.zip) containing the project.
-
-# Building and testing this project
-
-There's a number of ways to build this project on your machine. The recommended way of doing so is using _Stack_, whose instructions will follow directly after this section.
 
 ## Stack (Windows, Linux, MacOS) [recommended]
 
@@ -52,49 +44,12 @@ stack run clash -- NumMunge.Project --vhdl
 
 You can find the HDL files in `vhdl/`. The source can be found in `src/NumMunge/Project.hs`.
 
-## Cabal (Linux, MacOS)
-
-**The following instructions only work for Cabal >=3.0 and GHC >=8.4.**
-
-First, update your cabal package database:
-
-```bash
-cabal update
-```
-
-You only have to run the update command once. After that, you can keep rebuilding your project by running the build command:
-
-```bash
-cabal build
-```
-
-To run the tests defined in `tests/`, use:
-
-```bash
-cabal run test-library
-cabal run doctests
-```
-
-To compile the project to VHDL, run:
-
-```bash
-cabal run clash -- Example.Project --vhdl
-```
-
-You can find the HDL files in `vhdl/`. The source can be found in `src/Example/Project.hs`.
-
 ## REPL
 
 Clash offers a [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) as a quick way to try things, similar to Python's `python` or Ruby's `irb`. Stack users can open the REPL by invoking:
 
 ```
 stack run clashi
-```
-
-Cabal users use:
-
-```
-cabal run clashi
 ```
 
 ## IDE support
@@ -111,11 +66,11 @@ nm-clash
 │   ├── Clash.hs
 │   └── Clashi.hs
 ├── src
-│   └── Example
+│   └── NumMunge
 │       └── Project.hs
 ├─── tests
 │   ├── Tests
-│   │   └── Example
+│   │   └── NumMunge
 │   │       └── Project.hs
 │   ├── doctests.hs
 │   └── unittests.hs
@@ -125,32 +80,6 @@ nm-clash
 ```
 
 ## nm-clash.cabal
-
-This is the most important file in your project. It describes how to build your project. Even though it ends in `.cabal`, Stack will use this file too. It starts of with meta-information:
-
-```yaml
-cabal-version:       2.4
-name:                nm-clash
-version:             0.1
-license:             BSD-2-Clause
-author:              John Smith <john@example.com>
-maintainer:          John Smith <john@example.com>
-```
-
-If you decide to publish your code on [Hackage](https://hackage.haskell.org/), this will show up on your package's front page. Take note of the license, it's set to `BSD-2-Clause` by default, but this might bee too liberal for your project. You can use any of the licenses on [spdx.org/licenses](https://spdx.org/licenses/). If none of those suit, remove the `license` line, add `license-file: LICENSE`, and add a `LICENSE` file of your choice to the root of this project. Moving on:
-
-```yaml
-common common-options
-  default-extensions:
-    BangPatterns
-    BinaryLiterals
-    ConstraintKinds
-    [..]
-    QuasiQuotes
-
-    -- Prelude isn't imported by default as Clash offers Clash.Prelude
-    NoImplicitPrelude
-```
 
 Clash's parent language is Haskell and its de-facto compiler, GHC, does a lot of heavy lifting before Clash gets to see anything. Because using Clash's Prelude requires a lot of extensions to be enabled to be used, we enable them here for all files in the project. Alternatively, you could add them where needed using `{-# LANGUAGE SomeExtension #-}` at the top of a `.hs` file instead. The next section, `ghc-options`, sets warning flags (`-Wall -Wcompat`) and flags that make GHC generate code Clash can handle.
 
@@ -215,7 +144,7 @@ test-suite test-library
     tasty-th
 ```
 
-These testsuites are executed when using `stack test` or `cabal test`. Note that Cabal swallows the output if more than one testsuite is defined, as is the case here. You might want to consider running the testsuites separately. More on tests in [/tests](#tests).
+These testsuites are executed when using `stack test`. Note that Cabal swallows the output if more than one testsuite is defined, as is the case here. You might want to consider running the testsuites separately. More on tests in [/tests](#tests).
 
 ## cabal.project
 
@@ -235,10 +164,10 @@ write-ghc-environment-files: always
 While Cabal fetches packages straight from Hackage (with a bias towards the latest versions), Stack works through _snapshots_. Snapshots are an index of packages from Hackage know to work well with each other. In addition to that, they specify a GHC version. These snapshots are curated by the community and FP Complete and can be found on [stackage.org](https://www.stackage.org/).
 
 ```yaml
-resolver: lts-19.32
+resolver: lts-22.43
 ```
 
-This project uses [lts-19.32](https://www.stackage.org/lts-19.32), which
+This project uses [lts-22.43](https://www.stackage.org/lts-22.43), which
 includes Clash 1.6.4. Snapshots tightly couple GHC and package versions. By
 working this way, Stack projects build on a cohesive set of packages. Plus, it
 guarantees that if a `stack build` works now, it will work in 10 years too.
@@ -279,12 +208,6 @@ as the comment says `topEntity` will get compiled by Clash if we ask it to compi
 
 ```
 stack run clash -- NumMunge.Project --vhdl
-```
-
-or
-
-```
-cabal run clash -- NumMunge.Project --vhdl
 ```
 
 We could instead ask it to synthesize `plus` instead:
