@@ -45,18 +45,13 @@ case_xoshiro128Plus = do
 
 case_randomStream :: Assertion
 case_randomStream = do
-  let output =
-        sampleN @System 500 $
-          withClockResetEnable clockGen resetGen enableGen $
-            randomStream (initialState 42)
+  let output = sampleN @System 500 $ withClockResetEnable clockGen resetGen enableGen randomStream
   assertBool "Random stream values in [0,1)" $
     all (\x -> x >= 0 && x < 1) output
 
 case_randomPairs :: Assertion
 case_randomPairs = do
-  let output =
-        sampleN @System 500 $
-          withClockResetEnable clockGen resetGen enableGen randomPairs
+  let output = sampleN @System 500 $ withClockResetEnable clockGen resetGen enableGen randomPairs
   assertBool "Random pairs in [0,1)" $
     all (\(x, y) -> x >= 0 && x < 1 && y >= 0 && y < 1) output
 
@@ -69,9 +64,7 @@ case_boxMuller = do
 
 case_topEntity :: Assertion
 case_topEntity = do
-  let output =
-        sampleN @System 500 $
-          withClockResetEnable clockGen resetGen enableGen generateNoise
+  let output = sampleN @System 500 $ withClockResetEnable clockGen resetGen enableGen generateNoise
   assertBool "Top entity produces reasonable output" $
     all (\(x, y) -> abs x < 10 && abs y < 10) output
 
@@ -79,17 +72,14 @@ prop_rngRange :: Property
 prop_rngRange =
   property $
     let circuit =
-          withClockResetEnable clockGen resetGen enableGen $
-            randomStream (initialState 0xDEAD_BEEF)
+          withClockResetEnable clockGen resetGen enableGen randomStream
         values = sampleN @System 1000 circuit
      in conjoin $ L.map (\x -> x >= 0 Test.Tasty.QuickCheck..&&. x < 1) values
 
 prop_rngDistribution :: Property
 prop_rngDistribution =
   property $
-    let circuit =
-          withClockResetEnable clockGen resetGen enableGen $
-            randomStream (initialState 0xDEAD_BEEF)
+    let circuit = withClockResetEnable clockGen resetGen enableGen randomStream
         values = sampleN @System 10_000 circuit
         buckets = countInBuckets values
         expected = fromIntegral (L.length values `div` 10) :: Double
@@ -109,9 +99,7 @@ prop_rngDistribution =
 prop_rngPeriod :: Property
 prop_rngPeriod =
   property $
-    let circuit =
-          withClockResetEnable clockGen resetGen enableGen $
-            randomStream (initialState 0xDEAD_BEEF)
+    let circuit = withClockResetEnable clockGen resetGen enableGen $ randomStream
         values = sampleN @System 1000 circuit
         uniqueCount = L.length (L.nub values)
      in counterexample

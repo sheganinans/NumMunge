@@ -12,7 +12,7 @@ type Fixed16 = SFixed 16 16
 type Seed = (Word32, Word32, Word32, Word32)
 
 generateNoise :: (HiddenClockResetEnable dom) => Signal dom (Fixed16, Fixed16)
-generateNoise = boxMuller randomPairs
+generateNoise = boxMuller $ bundle (randomStream, randomStream)
 
 sqrtFixed :: Fixed16 -> Fixed16
 sqrtFixed x = if x == 0 then 0 else go 5 (if x < 1 then 0.5 else x / 1.414213562)
@@ -69,17 +69,11 @@ boxMuller uniform = bundle (z0, z1)
 
 type State = (Word32, Word32, Word32, Word32)
 
-randomPairs :: (HiddenClockResetEnable dom) => Signal dom (Fixed16, Fixed16)
-randomPairs = bundle (r1, r2)
-  where
-    r1 = randomStream $ initialState 0xDEADBEEF
-    r2 = randomStream $ initialState 0x12345678
-
 initialState :: Word32 -> Seed
 initialState seed = (seed, seed `xor` 0x01234567, seed `xor` 0x89ABCDEF, seed `xor` 0xDEADBEEF)
 
-randomStream :: (HiddenClockResetEnable dom) => Seed -> Signal dom Fixed16
-randomStream initState = fmap toFixed stateSignal
+randomStream :: (HiddenClockResetEnable dom) => Signal dom Fixed16
+randomStream = fmap toFixed stateSignal
   where
     initState = initialState 0xC0FFEE42
     stateSignal = register initState $ fmap (snd . xoshiro128Plus) stateSignal
@@ -122,37 +116,6 @@ debugTest = do
         (realToFrac x :: Double)
         (realToFrac y :: Double)
 
-debugState :: IO ()
-debugState = do
-  putStrLn "RNG State transitions:"
-  let testInputs :: [Word32]
-      testInputs = L.take 10 (L.replicate 5 0xDEADBEEF L.++ L.replicate 5 0x12345678)
-
-      initState' = initialState 0xDEADBEEF
-
-      transitions :: [Seed]
-      transitions = L.scanl step initState' testInputs
-
-      outputs :: [Fixed16]
-      outputs = L.zipWith (curry (genOutput . xoshiro128Plus . fst)) transitions (L.tail transitions)
-
-  mapM_ printTransition $ L.zip3 [1 ..] transitions outputs
-  where
-    step :: Seed -> Word32 -> Seed
-    step curSeed _ = snd $ xoshiro128Plus curSeed
-
-    genOutput :: (Word32, Seed) -> Fixed16
-    genOutput (randWord, _) =
-      fromRational $ toRational randWord / toRational (maxBound :: Word32)
-
-    printTransition :: (Int, Seed, Fixed16) -> IO ()
-    printTransition (i, state, val) =
-      printf
-        "Step %3d: State=%s Value=%f\n"
-        i
-        (show state)
-        (realToFrac val :: Double)
-
 debugStateTransition :: IO ()
 debugStateTransition = do
   putStrLn "State Transition Debugging:"
@@ -174,73 +137,6 @@ debugStateTransition = do
         (show state)
         (realToFrac val :: Double)
 
-testRNG :: IO ()
-testRNG = do
-  putStrLn "Testing RNG output:"
-  let initState' = initialState 0xDEADBEEF
-      outputs :: [(Word32, State)]
-      outputs = L.take 10 $ L.iterate (xoshiro128Plus . snd) (xoshiro128Plus initState')
-
-  mapM_ (\(i, (val, _)) -> printf "Output %3d: %08x\n" (i :: Int) val) $
-    L.zip [1 ..] outputs
-
-debugValues :: IO ()
-debugValues = do
-  putStrLn "Random value distribution check:"
-  let values = simulateN @System 20 rngCircuit (L.repeat 0)
-
-  mapM_
-    ( \(i, v) ->
-        printf
-          "Value %2d: %f\n"
-          (i :: Int)
-          (realToFrac v :: Double)
-    )
-    $ L.zip [1 ..] values
-  where
-    rngCircuit ::
-      (HiddenClockResetEnable dom) =>
-      Signal dom Word32 ->
-      Signal dom Fixed16
-    rngCircuit _ =
-      let stateSignal =
-            register initState $
-              fmap (snd . xoshiro128Plus) stateSignal
-          initState = initialState 0xDEADBEEF
-       in fmap genOutput stateSignal
-      where
-        genOutput s =
-          let (randWord, _) = xoshiro128Plus s
-           in fromRational $
-                toRational randWord / toRational (maxBound :: Word32)
-
-testSeed :: [(Fixed16, Fixed16)]
-testSeed = simulateN @System 100 circuit (L.repeat ())
-  where
-    circuit :: (HiddenClockResetEnable dom) => Signal dom () -> Signal dom (Fixed16, Fixed16)
-    circuit _ = exposeClockResetEnable generateNoise clockGen resetGen enableGen
-
-debugBoxMuller :: IO ()
-debugBoxMuller = do
-  putStrLn "Box-Muller transform test:"
-  let circuit :: (HiddenClockResetEnable dom) => Signal dom () -> Signal dom (Fixed16, Fixed16)
-      circuit _ = boxMuller $ bundle (r1, r2)
-        where
-          r1 = register 0.1 $ randomStream s1
-          r2 = register 0.1 $ randomStream s2
-          s1 = initialState 0xDEADBEEF
-          s2 = initialState 0x12345678
-      pairs = simulateN @System 10 circuit (L.repeat ())
-  mapM_
-    ( \(i, (x, y)) ->
-        printf
-          "Pair %2d: (%8.4f, %8.4f)\n"
-          i
-          (realToFrac x :: Double)
-          (realToFrac y :: Double)
-    )
-    $ L.zip [1 :: Int ..] pairs
-
 debugDistribution :: IO ()
 debugDistribution = do
   putStrLn "Distribution of random values:"
@@ -250,9 +146,7 @@ debugDistribution = do
   mapM_ (printBucket ranges) $ L.zip [0 ..] buckets
   where
     circuit :: (HiddenClockResetEnable dom) => Signal dom () -> Signal dom Fixed16
-    circuit _ =
-      withClockResetEnable clockGen resetGen enableGen $
-        randomStream (initialState 0xDEADBEEF)
+    circuit _ = withClockResetEnable clockGen resetGen enableGen randomStream
 
     countBuckets :: [Fixed16] -> [(Fixed16, Fixed16)] -> [Int]
     countBuckets vs = L.map count
@@ -261,9 +155,28 @@ debugDistribution = do
 
     printBucket :: [(Fixed16, Fixed16)] -> (Int, Int) -> IO ()
     printBucket rs (idx, count) =
-      printf "[%.1f-%.1f): %d\n" (realToFrac l :: Double) (realToFrac h :: Double) count
+      printf
+        "[%.1f-%.1f): %d\n"
+        (realToFrac l :: Double)
+        (realToFrac h :: Double)
+        count
       where
         (l, h) = rs L.!! idx
+
+debugBoxMuller :: IO ()
+debugBoxMuller = do
+  putStrLn "Box-Muller transform test:"
+  let circuit :: (HiddenClockResetEnable dom) => Signal dom () -> Signal dom (Fixed16, Fixed16)
+      circuit _ = boxMuller $ bundle (randomStream, randomStream)
+      pairs = L.take 20 $ simulateN @System 20 circuit (L.repeat ())
+  mapM_ printPair $ L.zip [1 :: Int ..] pairs
+  where
+    printPair (i, (x, y)) =
+      printf
+        "Pair %2d: (%8.4f, %8.4f)\n"
+        i
+        (realToFrac x :: Double)
+        (realToFrac y :: Double)
 
 debugRange :: IO ()
 debugRange = do
@@ -273,6 +186,4 @@ debugRange = do
   printf "Max value: %.6f\n" (realToFrac (L.maximum values) :: Double)
   where
     circuit :: (HiddenClockResetEnable dom) => Signal dom () -> Signal dom Fixed16
-    circuit _ =
-      withClockResetEnable clockGen resetGen enableGen $
-        randomStream (initialState 0xDEADBEEF)
+    circuit _ = withClockResetEnable clockGen resetGen enableGen randomStream

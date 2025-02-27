@@ -5,3 +5,13 @@ write-ghc-environment-files: always
 
 -- Eliminates the need for `--enable-tests`, which is needed for HLS.
 tests: true
+
+source-repository-package
+  type: git
+  location: https://github.com/clash-lang/clash-protocols.git
+  subdir: clash-protocols
+
+source-repository-package
+  type: git
+  location: https://github.com/clash-lang/clash-protocols.git
+  subdir: clash-protocols-base
