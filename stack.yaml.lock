@@ -39,6 +39,39 @@ packages:
       size: 300
   original:
     hackage: prettyprinter-interp-0.2.0.0@sha256:69c339a95b265dab9b3478ca19ec96952b6b472bd0ff6e2127112a9562362c1d,2086
+- completed:
+    hackage: circuit-notation-0.1.0.0@sha256:bd0c416b5e0766006bbd7a07b1ce3f6a7f35b84216a4d77172362d3de8b960c9,1321
+    pantry-tree:
+      sha256: ca3915d5b3a7e2c782dbea059e48f7224f14be6c137d177e06c5509bf165540f
+      size: 492
+  original:
+    hackage: circuit-notation-0.1.0.0@sha256:bd0c416b5e0766006bbd7a07b1ce3f6a7f35b84216a4d77172362d3de8b960c9
+- completed:
+    commit: febb041c32fa678e7ddb7d0e976516a5c56b03fc
+    git: https://github.com/clash-lang/clash-protocols.git
+    name: clash-protocols
+    pantry-tree:
+      sha256: d4d16d980b58be25f52a5791258552542aa662f5bb871558d3a66ebe1625e62b
+      size: 4414
+    subdir: clash-protocols
+    version: '0.1'
+  original:
+    commit: febb041c32fa678e7ddb7d0e976516a5c56b03fc
+    git: https://github.com/clash-lang/clash-protocols.git
+    subdir: clash-protocols
+- completed:
+    commit: febb041c32fa678e7ddb7d0e976516a5c56b03fc
+    git: https://github.com/clash-lang/clash-protocols.git
+    name: clash-protocols-base
+    pantry-tree:
+      sha256: 83c3a5482d00313301fa2d2ce89348f028bd729fc027b127f6a0460776a7a5a4
+      size: 803
+    subdir: clash-protocols-base
+    version: '0.1'
+  original:
+    commit: febb041c32fa678e7ddb7d0e976516a5c56b03fc
+    git: https://github.com/clash-lang/clash-protocols.git
+    subdir: clash-protocols-base
 snapshots:
 - completed:
     sha256: 08bd13ce621b41a8f5e51456b38d5b46d7783ce114a50ab604d6bbab0d002146

@@ -86,7 +86,10 @@ library
   hs-source-dirs: src
   exposed-modules:
     NumMunge.Project
+    NumMunge.GaussianNoise
   default-language: Haskell2010
+  build-depends:
+    clash-protocols
 
 -- Builds the executable 'clash', with nm-clash project in scope
 executable clash
