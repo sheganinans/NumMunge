@@ -1,0 +1,235 @@
+cabal-version:       2.4
+name:                clash-protocols
+synopsis:            a battery-included library for (dataflow) protocols
+Homepage:            https://gitlab.com/martijnbastiaan/clash-protocols
+version:             0.1
+category:            Hardware
+license:             BSD-2-Clause
+license-file:        LICENSE
+author:              Martijn Bastiaan, QBayLogic B.V.
+maintainer:          Martijn Bastiaan <martijn@hmbastiaan.nl>
+description:
+  Suggested reading order:
+  .
+  * 'Protocols' + README.md
+  * 'Protocols.Df'
+  * 'Protocols.Plugin'
+  * 'Protocols.Hedgehog'
+
+data-files:
+    src/Protocols/Hedgehog.hs
+    src/Protocols/Hedgehog/*.hs
+
+flag large-tuples
+  description:
+    Generate instances for classes such as `Units` and `TaggedBundle` for tuples
+    up to and including 62 elements - the GHC imposed maximum. Note that this
+    greatly increases compile times for `clash-protocols`.
+  default: False
+  manual: True
+
+common common-options
+  default-extensions:
+    BangPatterns
+    BinaryLiterals
+    ConstraintKinds
+    CPP
+    DataKinds
+    DefaultSignatures
+    DeriveAnyClass
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveLift
+    DeriveTraversable
+    DerivingStrategies
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    NoStarIsType
+    PolyKinds
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    ViewPatterns
+
+    -- TemplateHaskell is used to support convenience functions such as
+    -- 'listToVecTH' and 'bLit'.
+    TemplateHaskell
+    QuasiQuotes
+
+    -- Prelude isn't imported by default as Clash offers Clash.Prelude
+    -- NoImplicitPrelude
+  ghc-options:
+    -Wall -Wcompat
+
+    -- Plugins to support type-level constraint solving on naturals
+    -fplugin GHC.TypeLits.Extra.Solver
+    -fplugin GHC.TypeLits.Normalise
+    -fplugin GHC.TypeLits.KnownNat.Solver
+
+    -- Clash needs access to the source code in compiled modules
+    -fexpose-all-unfoldings
+
+    -- Worker wrappers introduce unstable names for functions that might have
+    -- blackboxes attached for them. You can disable this, but be sure to add
+    -- a no-specialize pragma to every function with a blackbox.
+    -fno-worker-wrapper
+
+  default-language: Haskell2010
+  build-depends:
+    base >= 4.15.0.0,
+    Cabal,
+
+    clash-prelude >= 1.8.1 && < 1.10,
+    ghc-typelits-natnormalise,
+    ghc-typelits-extra,
+    ghc-typelits-knownnat
+
+custom-setup
+  setup-depends:
+    base          >= 4.11 && <5,
+    Cabal         >= 2.4,
+    cabal-doctest >= 1.0.1 && <1.1
+
+library
+  import: common-options
+  hs-source-dirs: src
+
+  if flag(large-tuples)
+    CPP-Options: -DLARGE_TUPLES
+
+  build-depends:
+    , clash-protocols-base
+    , circuit-notation
+    , clash-prelude-hedgehog
+    , constraints
+    , data-default ^>= 0.7.1.1
+    , deepseq
+    , extra
+    , hashable
+    , hedgehog >= 1.0.2
+    , lifted-async
+    , mtl
+    , pretty-show
+    , strict-tuple
+    , tagged
+    , template-haskell
+
+      -- To be removed; we need 'Test.Tasty.Hedgehog.Extra' to fix upstream issues
+    , tasty >= 1.2 && < 1.5
+    , tasty-hedgehog >= 1.2
+
+  exposed-modules:
+    Protocols
+    Protocols.Avalon.MemMap
+    Protocols.Avalon.Stream
+    Protocols.Axi4.Common
+    Protocols.Axi4.ReadAddress
+    Protocols.Axi4.ReadData
+    Protocols.Axi4.Stream
+    Protocols.Axi4.WriteAddress
+    Protocols.Axi4.WriteData
+    Protocols.Axi4.WriteResponse
+    Protocols.PacketStream
+    Protocols.PacketStream.Base
+    Protocols.PacketStream.AsyncFifo
+    Protocols.PacketStream.Converters
+    Protocols.PacketStream.Depacketizers
+    Protocols.PacketStream.Hedgehog
+    Protocols.PacketStream.PacketFifo
+    Protocols.PacketStream.Packetizers
+    Protocols.PacketStream.Padding
+    Protocols.PacketStream.Routing
+    Protocols.Df
+    Protocols.DfConv
+    Protocols.Hedgehog
+    Protocols.Hedgehog.Internal
+    Protocols.Idle
+    Protocols.Internal
+    Protocols.Internal.TH
+    Protocols.Vec
+    Protocols.Wishbone
+    Protocols.Wishbone.Standard
+    Protocols.Wishbone.Standard.Hedgehog
+
+    -- 'testProperty' is broken upstream, it reports wrong test names
+    -- TODO: test / upstream ^
+    Test.Tasty.Hedgehog.Extra
+
+  reexported-modules:
+    Protocols.Plugin
+
+  autogen-modules:    Paths_clash_protocols
+
+  other-modules:
+    Data.Constraint.Nat.Extra
+    Data.Maybe.Extra
+    Clash.Sized.Vector.Extra
+    Paths_clash_protocols
+    Protocols.Hedgehog.Types
+    Protocols.Internal.Types
+
+  default-language: Haskell2010
+
+test-suite unittests
+  import: common-options
+  hs-source-dirs: tests
+  type: exitcode-stdio-1.0
+  ghc-options: -threaded -with-rtsopts=-N
+  main-is: unittests.hs
+  other-modules:
+    Tests.Haxioms
+    Tests.Protocols
+    Tests.Protocols.Df
+    Tests.Protocols.DfConv
+    Tests.Protocols.Avalon
+    Tests.Protocols.Axi4
+    Tests.Protocols.Plugin
+    Tests.Protocols.Vec
+    Tests.Protocols.Wishbone
+    Tests.Protocols.PacketStream
+    Tests.Protocols.PacketStream.AsyncFifo
+    Tests.Protocols.PacketStream.Base
+    Tests.Protocols.PacketStream.Converters
+    Tests.Protocols.PacketStream.Depacketizers
+    Tests.Protocols.PacketStream.Packetizers
+    Tests.Protocols.PacketStream.PacketFifo
+    Tests.Protocols.PacketStream.Padding
+    Tests.Protocols.PacketStream.Routing
+
+    Util
+
+  build-depends:
+    clash-protocols-base,
+    clash-protocols,
+    clash-prelude-hedgehog,
+    unordered-containers,
+    deepseq,
+    extra,
+    hashable,
+    hedgehog,
+    strict-tuple,
+    tasty >= 1.2 && < 1.5,
+    tasty-hedgehog >= 1.2,
+    tasty-th,
+    tasty-hunit
+
+test-suite doctests
+  import:           common-options
+  type:             exitcode-stdio-1.0
+  default-language: Haskell2010
+  main-is:          doctests.hs
+  hs-source-dirs:   tests
+
+  build-depends:
+    base,
+    clash-protocols-base,
+    clash-protocols,
+    process,
+    doctest

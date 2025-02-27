@@ -1,0 +1,220 @@
+name: CI
+
+# Trigger the workflow on all pull requests and pushes/merges to main branch
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+
+concurrency:
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  stack:
+    name: Stack tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Stack / GHC
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.8.4'
+          cabal-version: '3.14.1.1'
+          enable-stack: true
+          stack-version: 'latest'
+
+      # Ask Stack to use system GHC instead of installing its own copy
+      - name: Use system GHC
+        run: |
+          stack config set system-ghc --global true
+
+      - name: Restore cached dependencies
+        uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ github.ref }}-${{ github.sha }}
+            ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ github.ref }}-
+            ${{ runner.os }}-ghc-${{ matrix.ghc }}-
+
+      - name: Install dependencies
+        run: stack build --test --only-dependencies
+
+      # Cache dependencies already at this point, so that we do not have to
+      # rebuild them should the subsequent steps fail
+      - name: Save cached dependencies
+        uses: actions/cache/save@v4
+        # Trying to save over an existing cache gives distracting
+        # "Warning: Cache save failed." since they are immutable
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ github.ref }}-${{ github.sha }}
+
+      - name: Test with Stack
+        run: |
+          .ci/test_stack.sh
+
+  cabal:
+    name: Cabal tests - ghc ${{ matrix.ghc }} / clash ${{ matrix.clash }} / doc ${{ matrix.check_haddock }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        clash:
+          - "1.8.2"
+        cabal:
+          - "3.14.1.1"
+        ghc:
+          - "9.0.2"
+          - "9.2.8"
+          - "9.4.8"
+          - "9.8.4"
+          - "9.10.1"
+        include:
+          - check_haddock: "False"
+          - ghc: "9.6.6"
+            check_haddock: "True"
+            os: "ubuntu-latest"
+            clash: "1.8.2"
+            cabal: "3.14.1.1"
+
+    env:
+      check_haddock: ${{ matrix.check_haddock }}
+      clash_version: ${{ matrix.clash }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haskell
+        uses: haskell-actions/setup@v2
+        id: setup-haskell-cabal
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: ${{ matrix.cabal }}
+
+      - name: Use CI specific settings
+        run: |
+          .ci/apply_settings.sh
+
+      - name: Setup CI
+        run: |
+          cabal v2-freeze
+          mv cabal.project.freeze frozen
+
+      - name: Restore cached dependencies
+        uses: actions/cache/restore@v4
+        id: cache
+        env:
+          key:
+            ${{ runner.os }}-ghc-${{ matrix.ghc }}-cabal-${{
+            steps.setup-haskell.outputs.cabal-version }}${{
+            matrix.project-variant }}
+        with:
+          path: ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ matrix.clash }}-${{ hashFiles('frozen') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ matrix.clash }}-${{ hashFiles('frozen') }}
+            ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ matrix.clash }}-
+            ${{ runner.os }}-ghc-${{ matrix.ghc }}-
+
+      - name: Install dependencies
+        run: cabal v2-build all --enable-tests --only-dependencies
+
+      # Cache dependencies already at this point, so that we do not have to
+      # rebuild them should the subsequent steps fail
+      - name: Save cached dependencies
+        uses: actions/cache/save@v4
+        # Trying to save over an existing cache gives distracting
+        # "Warning: Cache save failed." since they are immutable
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ matrix.clash }}-${{ hashFiles('frozen') }}
+
+      - name: Build
+        run: |
+          cabal v2-build all --enable-tests
+
+      - name: Test
+        run: |
+          .ci/test_cabal.sh
+
+      - name: Documentation
+        if: ${{ matrix.check_haddock == 'True' }}
+        run: |
+          .ci/build_docs.sh
+
+  fourmolu:
+    runs-on: ubuntu-latest
+    steps:
+      # Note that you must checkout your code before running haskell-actions/run-fourmolu
+      - uses: actions/checkout@v3
+      - uses: haskell-actions/run-fourmolu@v9
+        with:
+          version: "0.14.0.0"
+          pattern: |
+            **/*.hs
+            !clash-protocols-base/src/Protocols/Plugin/Cpp.hs
+
+  linting:
+    name: Source code linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Whitespace
+        run: |
+          .ci/test_whitespace.sh
+
+  # Mandatory check on GitHub
+  all:
+    name: All jobs finished
+    if: always()
+    needs: [
+        cabal,
+        fourmolu,
+        linting,
+        stack,
+      ]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check dependencies for failures
+        run: |
+          # Test all dependencies for success/failure
+          set -x
+          success="${{ contains(needs.*.result, 'success') }}"
+          fail="${{ contains(needs.*.result, 'failure') }}"
+          set +x
+
+          # Test whether success/fail variables contain sane values
+          if [[ "${success}" != "true" && "${success}" != "false" ]]; then exit 1; fi
+          if [[ "${fail}"    != "true" && "${fail}"    != "false" ]]; then exit 1; fi
+
+          # We want to fail if one or more dependencies fail. For safety, we introduce
+          # a second check: if no dependencies succeeded something weird is going on.
+          if [[ "${fail}" == "true" || "${success}" == "false" ]]; then
+            echo "One or more dependency failed, or no dependency succeeded."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install python3-yaml
+
+      - name: Check that the 'all' job depends on all other jobs
+        run: |
+          .github/scripts/all_check.py
