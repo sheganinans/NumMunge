@@ -1,0 +1,117 @@
+cabal-version:       2.4
+name:                clash-protocols-base
+synopsis:            a battery-included library for (dataflow) protocols
+Homepage:            https://gitlab.com/martijnbastiaan/clash-protocols
+version:             0.1
+category:            Hardware
+license:             BSD-2-Clause
+license-file:        LICENSE
+author:              Martijn Bastiaan, QBayLogic B.V.
+maintainer:          Martijn Bastiaan <martijn@hmbastiaan.nl>
+
+flag large-tuples
+  description:
+    Generate instances for classes such as `Units` and `TaggedBundle` for tuples
+    up to and including 62 elements - the GHC imposed maximum. Note that this
+    greatly increases compile times for `clash-protocols-base`.
+  default: False
+  manual: True
+
+common common-options
+  default-extensions:
+    BangPatterns
+    BinaryLiterals
+    ConstraintKinds
+    CPP
+    DataKinds
+    DefaultSignatures
+    DeriveAnyClass
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveLift
+    DeriveTraversable
+    DerivingStrategies
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    NoStarIsType
+    PolyKinds
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    ViewPatterns
+
+    -- TemplateHaskell is used to support convenience functions such as
+    -- 'listToVecTH' and 'bLit'.
+    TemplateHaskell
+    QuasiQuotes
+
+    -- Prelude isn't imported by default as Clash offers Clash.Prelude
+    -- NoImplicitPrelude
+  ghc-options:
+    -Wall -Wcompat
+
+    -- Plugins to support type-level constraint solving on naturals
+    -fplugin GHC.TypeLits.Extra.Solver
+    -fplugin GHC.TypeLits.Normalise
+    -fplugin GHC.TypeLits.KnownNat.Solver
+
+    -- Clash needs access to the source code in compiled modules
+    -fexpose-all-unfoldings
+
+    -- Worker wrappers introduce unstable names for functions that might have
+    -- blackboxes attached for them. You can disable this, but be sure to add
+    -- a no-specialize pragma to every function with a blackbox.
+    -fno-worker-wrapper
+
+  default-language: Haskell2010
+  build-depends:
+    base >= 4.15.0.0,
+    Cabal,
+
+    clash-prelude >= 1.8.1 && < 1.10,
+    ghc-typelits-natnormalise,
+    ghc-typelits-extra,
+    ghc-typelits-knownnat
+
+custom-setup
+  setup-depends:
+    base          >= 4.11 && <5,
+    Cabal         >= 2.4,
+
+library
+  import: common-options
+  hs-source-dirs: src
+
+  if flag(large-tuples)
+    CPP-Options: -DLARGE_TUPLES
+
+  build-depends:
+    , circuit-notation
+    , deepseq
+    , extra
+    , ghc >= 8.7 && < 9.11
+    , hashable
+    , tagged
+    , template-haskell
+
+  exposed-modules:
+    Protocols.Plugin
+    Protocols.Plugin.Cpp
+    Protocols.Plugin.Internal
+    Protocols.Plugin.TaggedBundle
+    Protocols.Plugin.TaggedBundle.TH
+    Protocols.Plugin.TH
+    Protocols.Plugin.Units
+    Protocols.Plugin.Units.TH
+
+  other-modules:
+    Protocols.Plugin.Types
+
+  default-language: Haskell2010
