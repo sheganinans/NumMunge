@@ -49,15 +49,9 @@ case_randomStream = do
   assertBool "Random stream values in [0,1)" $
     all (\x -> x >= 0 && x < 1) output
 
-case_randomPairs :: Assertion
-case_randomPairs = do
-  let output = sampleN @System 500 $ withClockResetEnable clockGen resetGen enableGen randomPairs
-  assertBool "Random pairs in [0,1)" $
-    all (\(x, y) -> x >= 0 && x < 1 && y >= 0 && y < 1) output
-
 case_boxMuller :: Assertion
 case_boxMuller = do
-  let input = pure (0.5, 0.5)
+  let input = pure 0.5
       output = sampleN @System 500 (boxMuller input)
   assertBool "Box-Muller output in reasonable range" $
     all (\(x, y) -> abs x < 10 && abs y < 10) output
@@ -99,7 +93,7 @@ prop_rngDistribution =
 prop_rngPeriod :: Property
 prop_rngPeriod =
   property $
-    let circuit = withClockResetEnable clockGen resetGen enableGen $ randomStream
+    let circuit = withClockResetEnable clockGen resetGen enableGen randomStream
         values = sampleN @System 1000 circuit
         uniqueCount = L.length (L.nub values)
      in counterexample

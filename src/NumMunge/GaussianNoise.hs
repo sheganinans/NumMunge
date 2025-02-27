@@ -12,7 +12,7 @@ type Fixed16 = SFixed 16 16
 type Seed = (Word32, Word32, Word32, Word32)
 
 generateNoise :: (HiddenClockResetEnable dom) => Signal dom (Fixed16, Fixed16)
-generateNoise = boxMuller $ bundle (randomStream, randomStream)
+generateNoise = boxMuller randomStream
 
 sqrtFixed :: Fixed16 -> Fixed16
 sqrtFixed x = if x == 0 then 0 else go 5 (if x < 1 then 0.5 else x / 1.414213562)
@@ -57,13 +57,12 @@ lnFixed x
 
 boxMuller ::
   (HiddenClockResetEnable dom) =>
-  Signal dom (Fixed16, Fixed16) ->
+  Signal dom Fixed16 ->
   Signal dom (Fixed16, Fixed16)
-boxMuller uniform = bundle (z0, z1)
+boxMuller u = bundle (z0, z1)
   where
-    (u1, u2) = unbundle uniform
-    r = fmap (* 0.5) $ sqrtFixed <$> fmap ((* (-2)) . lnFixed) u1
-    theta = fmap (* 6.28318530718) u2
+    r = fmap (* 0.5) $ sqrtFixed <$> fmap ((* (-2)) . lnFixed) u
+    theta = fmap (* 6.28318530718) u
     z0 = (*) <$> r <*> fmap cosFixed theta
     z1 = (*) <$> r <*> fmap sinFixed theta
 
@@ -167,7 +166,7 @@ debugBoxMuller :: IO ()
 debugBoxMuller = do
   putStrLn "Box-Muller transform test:"
   let circuit :: (HiddenClockResetEnable dom) => Signal dom () -> Signal dom (Fixed16, Fixed16)
-      circuit _ = boxMuller $ bundle (randomStream, randomStream)
+      circuit _ = boxMuller randomStream
       pairs = L.take 20 $ simulateN @System 20 circuit (L.repeat ())
   mapM_ printPair $ L.zip [1 :: Int ..] pairs
   where
